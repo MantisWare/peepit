@@ -1,6 +1,6 @@
 # PeepIt MCP: Lightning-fast macOS Screenshots for AI Agents
 
-![PeepIt Banner](https://github.com/MantisWare/peepit/blob/master/assets/banner.png)
+![PeepIt Banner](https://github.com/MantisWare/peepit/blob/main/assets/banner.png)
 
 [![npm version](https://badge.fury.io/js/%40mantisware%2Fpeepit-mcp.svg)](https://www.npmjs.com/package/@mantisware/peepit-mcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
