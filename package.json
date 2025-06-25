@@ -46,7 +46,7 @@
     "image-analysis",
     "window-management"
   ],
-  "author": "Peter Steinberger <mantisware@gmail.com>",
+  "author": "Waldo Marais <waldo@mantisware.co.za>",
   "license": "MIT",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.0",

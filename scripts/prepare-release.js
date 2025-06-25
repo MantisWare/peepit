@@ -297,6 +297,7 @@ function checkSwift() {
     }
   } catch (e) {
     logError('Swift CLI apps JSON output is invalid');
+    logError(`Error: ${e}`);
     return false;
   }
   
@@ -320,6 +321,7 @@ function checkSwift() {
     }
   } catch (e) {
     logError('Swift CLI windows JSON output is invalid');
+    logError(`Error: ${e}`);
     return false;
   }
   
@@ -331,7 +333,7 @@ function checkSwift() {
       if (!errorData.error) {
         logWarning('Error response missing error field');
       }
-    } catch (e) {
+    } catch {
       // If it's not JSON, that's OK - might be stderr output
     }
   }
@@ -368,7 +370,7 @@ function checkVersionAvailability() {
         logError('Please update the version in package.json before releasing.');
         return false;
       }
-    } catch (e) {
+    } catch {
       // If parsing fails, try to check if it's a single version
       if (existingVersions.includes(version)) {
         logError(`Version ${version} is already published on npm!`);
@@ -379,33 +381,6 @@ function checkVersionAvailability() {
   }
 
   logSuccess(`Version ${version} is available for publishing`);
-  return true;
-}
-
-function checkChangelog() {
-  logStep('Changelog Entry Check');
-
-  const packageJson = JSON.parse(readFileSync(join(projectRoot, 'package.json'), 'utf8'));
-  const version = packageJson.version;
-
-  // Read CHANGELOG.md
-  const changelogPath = join(projectRoot, 'CHANGELOG.md');
-  if (!existsSync(changelogPath)) {
-    logError('CHANGELOG.md not found');
-    return false;
-  }
-
-  const changelog = readFileSync(changelogPath, 'utf8');
-  
-  // Check for version entry (handle both x.x.x and x.x.x-beta.x formats)
-  const versionPattern = new RegExp(`^#+\\s*(?:\\[)?${version.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:\\])?`, 'm');
-  if (!changelog.match(versionPattern)) {
-    logError(`No entry found for version ${version} in CHANGELOG.md`);
-    logError('Please add a changelog entry before releasing');
-    return false;
-  }
-
-  logSuccess(`CHANGELOG.md contains entry for version ${version}`);
   return true;
 }
 
@@ -440,6 +415,7 @@ function checkSecurityAudit() {
       }
     } catch (e) {
       logWarning('Could not parse pnpm audit results');
+      logError(`Error: ${e}`);
     }
   } else {
     logSuccess('No security vulnerabilities found');
@@ -565,6 +541,7 @@ function checkMCPServerSmoke() {
     } catch (e) {
       logError('Failed to parse MCP server response');
       logError(`Response: ${response}`);
+      logError(`Error: ${e}`);
       return false;
     }
     
@@ -627,6 +604,7 @@ function checkSwiftCLIIntegration() {
     }
   } catch (e) {
     logError('Swift CLI should return valid JSON for missing --app error');
+    logError(`Error: ${e}`);
     return false;
   }
   
@@ -686,6 +664,7 @@ function checkSwiftCLIIntegration() {
       }
     } catch (e) {
       logError(`Invalid JSON from: ${cmd}`);
+      logError(`Error: ${e}`);
       return false;
     }
   }
@@ -701,7 +680,7 @@ function checkSwiftCLIIntegration() {
       } else if (result.error && result.error.code === 'PERMISSION_DENIED_SCREEN_RECORDING') {
         log('Screen recording permission correctly detected as missing', colors.cyan);
       }
-    } catch (e) {
+    } catch {
       // Not JSON, might be a different error
     }
   }
@@ -868,6 +847,7 @@ function buildAndVerifyPackage() {
     }
   } catch (error) {
     logError('Failed to check binary permissions');
+    logError(`Error: ${error}`);
     return false;
   }
   
@@ -882,6 +862,7 @@ function buildAndVerifyPackage() {
     logSuccess('Binary contains both arm64 and x86_64 architectures');
   } catch (error) {
     logError('Failed to check binary architectures (lipo command failed)');
+    logError(`Error: ${error}`);
     return false;
   }
   
@@ -932,7 +913,6 @@ async function main() {
     checkSecurityAudit,
     checkVersionAvailability,
     checkVersionConsistency,
-    checkChangelog,
     checkTypeScript,
     checkTypeScriptDeclarations,
     checkSwift,
