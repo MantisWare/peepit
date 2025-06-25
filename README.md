@@ -465,9 +465,6 @@ OPENAI_API_KEY="your-key" PEEPIT_AI_PROVIDERS="openai/gpt-4o" PEEPIT_LOG_LEVEL=d
 
 ### Getting Help
 - 📚 [Documentation](./docs/)
-- 🐛 [Report Issues](https://github.com/mantisware/peepit/issues)
-- 💬 [Discussions](https://github.com/mantisware/peepit/discussions)
-- 📖 [Blog Post](https://mantisware.com/posts/peepit-mcp-screenshots-so-fast-theyre-paranormal/)
 
 ---
 
