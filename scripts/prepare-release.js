@@ -429,7 +429,7 @@ function checkPackageSize() {
 
   // Create a temporary package to get accurate size
   log('Calculating package size...', colors.cyan);
-  const packOutput = exec('pnpm pack --dry-run 2>&1');
+  const packOutput = exec('npm pack --dry-run 2>&1');
   
   // Extract size information
   const unpackedMatch = packOutput.match(/unpacked size: ([^\n]+)/);
@@ -793,7 +793,7 @@ function buildAndVerifyPackage() {
 
   // Create package
   log('Creating npm package...', colors.cyan);
-  const packOutput = exec('pnpm pack --dry-run 2>&1');
+  const packOutput = exec('npm pack --dry-run 2>&1');
   
   // Parse package details
   const sizeMatch = packOutput.match(/package size: ([^\n]+)/);
