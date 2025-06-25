@@ -15,6 +15,7 @@ import { readFileSync, existsSync, rmSync } from 'fs';
 import { join } from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+import { load as yamlLoad } from 'js-yaml';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -49,6 +50,17 @@ function logError(message) {
 
 function logWarning(message) {
   log(`⚠️  ${message}`, colors.yellow);
+}
+
+function getPnpmVersionFromLockfile(lockfilePath) {
+  if (!existsSync(lockfilePath)) {
+    return null;
+  }
+  const lockfileContent = readFileSync(lockfilePath, 'utf8');
+  const lockfile = yamlLoad(lockfileContent);
+  // This is a proxy for having run `pnpm install`.
+  // When package.json changes, this part of the lockfile is updated.
+  return lockfile.importers?.['.']?.specifiers?.['*'];
 }
 
 function exec(command, options = {}) {
@@ -130,20 +142,20 @@ function checkDependencies() {
   // Check if node_modules exists
   if (!existsSync(join(projectRoot, 'node_modules'))) {
     log('Installing dependencies...', colors.yellow);
-    if (!execWithOutput('npm install', 'npm install')) {
+    if (!execWithOutput('pnpm install', 'pnpm install')) {
       logError('Failed to install dependencies');
       return false;
     }
   }
 
   // Check for outdated dependencies
-  const outdated = exec('npm outdated --json', { allowFailure: true });
+  const outdated = exec('pnpm outdated --json', { allowFailure: true });
   if (outdated) {
     try {
       const outdatedPkgs = JSON.parse(outdated);
       const count = Object.keys(outdatedPkgs).length;
       if (count > 0) {
-        logWarning(`${count} outdated dependencies found (run 'npm outdated' for details)`);
+        logWarning(`${count} outdated dependencies found (run 'pnpm outdated' for details)`);
       }
     } catch {
       // Ignore parse errors
@@ -162,21 +174,21 @@ function checkTypeScript() {
   rmSync(join(projectRoot, 'dist'), { recursive: true, force: true });
 
   // Run ESLint
-  if (!execWithOutput('npm run lint', 'ESLint')) {
+  if (!execWithOutput('pnpm run lint', 'ESLint')) {
     logError('ESLint found violations');
     return false;
   }
   logSuccess('ESLint passed');
 
   // Type check
-  if (!execWithOutput('npm run build', 'TypeScript compilation')) {
+  if (!execWithOutput('pnpm run build', 'TypeScript compilation')) {
     logError('TypeScript compilation failed');
     return false;
   }
   logSuccess('TypeScript compilation successful');
 
   // Run TypeScript tests
-  if (!execWithOutput('npm test', 'TypeScript tests')) {
+  if (!execWithOutput('pnpm test', 'TypeScript tests')) {
     logError('TypeScript tests failed');
     return false;
   }
@@ -189,7 +201,7 @@ function checkSwift() {
   logStep('Swift Checks');
 
   // Run SwiftFormat
-  if (!execWithOutput('npm run format:swift', 'SwiftFormat')) {
+  if (!execWithOutput('pnpm run format:swift', 'SwiftFormat')) {
     logError('SwiftFormat failed');
     return false;
   }
@@ -204,7 +216,7 @@ function checkSwift() {
   }
 
   // Run SwiftLint
-  if (!execWithOutput('npm run lint:swift', 'SwiftLint')) {
+  if (!execWithOutput('pnpm run lint:swift', 'SwiftLint')) {
     logError('SwiftLint found violations');
     return false;
   }
@@ -242,7 +254,7 @@ function checkSwift() {
   }
 
   // Run Swift tests
-  if (!execWithOutput('npm run test:swift', 'Swift tests')) {
+  if (!execWithOutput('pnpm run test:swift', 'Swift tests')) {
     logError('Swift tests failed');
     return false;
   }
@@ -346,7 +358,7 @@ function checkVersionAvailability() {
   log(`Checking if ${packageName}@${version} is already published...`, colors.cyan);
 
   // Check if version exists on npm
-  const existingVersions = exec(`npm view ${packageName} versions --json`, { allowFailure: true });
+  const existingVersions = exec(`pnpm view ${packageName} versions --json`, { allowFailure: true });
   
   if (existingVersions) {
     try {
@@ -400,15 +412,15 @@ function checkChangelog() {
 function checkSecurityAudit() {
   logStep('Security Audit');
 
-  log('Running npm audit...', colors.cyan);
+  log('Running pnpm audit...', colors.cyan);
   
-  const auditResult = exec('npm audit --json', { allowFailure: true });
+  const auditResult = exec('pnpm audit --json', { allowFailure: true });
   
   if (auditResult) {
     try {
       const audit = JSON.parse(auditResult);
-      const vulnCount = audit.metadata?.vulnerabilities || {};
-      const total = Object.values(vulnCount).reduce((sum, count) => sum + count, 0);
+      const vulnCount = audit.summary?.vulnerabilities || {};
+      const total = vulnCount.total || Object.values(vulnCount).reduce((sum, count) => sum + count, 0);
       
       if (total > 0) {
         logWarning(`Found ${total} vulnerabilities:`);
@@ -427,7 +439,7 @@ function checkSecurityAudit() {
         logSuccess('No security vulnerabilities found');
       }
     } catch (e) {
-      logWarning('Could not parse npm audit results');
+      logWarning('Could not parse pnpm audit results');
     }
   } else {
     logSuccess('No security vulnerabilities found');
@@ -441,7 +453,7 @@ function checkPackageSize() {
 
   // Create a temporary package to get accurate size
   log('Calculating package size...', colors.cyan);
-  const packOutput = exec('npm pack --dry-run 2>&1');
+  const packOutput = exec('pnpm pack --dry-run 2>&1');
   
   // Extract size information
   const unpackedMatch = packOutput.match(/unpacked size: ([^\n]+)/);
@@ -702,33 +714,38 @@ function checkVersionConsistency() {
   logStep('Version Consistency Check');
 
   const packageJsonPath = join(projectRoot, 'package.json');
-  const packageLockPath = join(projectRoot, 'package-lock.json');
+  const lockfilePath = join(projectRoot, 'pnpm-lock.yaml');
   
   const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8'));
   const packageVersion = packageJson.version;
   
-  // Check package-lock.json
-  if (!existsSync(packageLockPath)) {
-    logError('package-lock.json not found');
+  // Check pnpm-lock.yaml
+  if (!existsSync(lockfilePath)) {
+    logError('pnpm-lock.yaml not found');
     return false;
   }
   
-  const packageLock = JSON.parse(readFileSync(packageLockPath, 'utf8'));
-  const lockVersion = packageLock.version;
-  
-  if (packageVersion !== lockVersion) {
-    logError(`Version mismatch: package.json has ${packageVersion}, package-lock.json has ${lockVersion}`);
-    logError('Run "npm install" to update package-lock.json');
+  // With pnpm, there isn't a direct version property in the lockfile.
+  // We can check for inconsistencies by trying a dry-run install.
+  // A cleaner way is to check if `pnpm install` needs to be run.
+  log('Checking if pnpm-lock.yaml is up to date...', colors.cyan);
+  try {
+    execSync('pnpm install --frozen-lockfile', {
+      cwd: projectRoot,
+      stdio: 'pipe',
+      encoding: 'utf8'
+    });
+    logSuccess(`Version ${packageVersion} is consistent in pnpm-lock.yaml`);
+  } catch (error) {
+    logError(`pnpm-lock.yaml is out of sync with package.json.`);
+    logError('Run "pnpm install" to update the lockfile.');
+    if (error.stdout) {
+      log('Details:', colors.yellow);
+      console.log(error.stdout);
+    }
     return false;
   }
   
-  // Also check that the package name matches in package-lock
-  if (packageLock.packages && packageLock.packages[''] && packageLock.packages[''].version !== packageVersion) {
-    logError(`Version mismatch in package-lock.json packages section`);
-    return false;
-  }
-  
-  logSuccess(`Version ${packageVersion} is consistent across package.json and package-lock.json`);
   return true;
 }
 
@@ -789,7 +806,7 @@ function buildAndVerifyPackage() {
   logStep('Build and Package Verification');
 
   // Build everything
-  if (!execWithOutput('npm run build:all', 'Full build (TypeScript + Swift)')) {
+  if (!execWithOutput('pnpm run build:all', 'Full build (TypeScript + Swift)')) {
     logError('Build failed');
     return false;
   }
@@ -797,7 +814,7 @@ function buildAndVerifyPackage() {
 
   // Create package
   log('Creating npm package...', colors.cyan);
-  const packOutput = exec('npm pack --dry-run 2>&1');
+  const packOutput = exec('pnpm pack --dry-run 2>&1');
   
   // Parse package details
   const sizeMatch = packOutput.match(/package size: ([^\n]+)/);
@@ -895,7 +912,7 @@ function buildAndVerifyPackage() {
   log(`Package version: ${version}`, colors.cyan);
 
   // Integration tests
-  if (!execWithOutput('npm run test:integration', 'Integration tests')) {
+  if (!execWithOutput('pnpm run test:integration', 'Integration tests')) {
     logError('Integration tests failed');
     return false;
   }
@@ -941,7 +958,7 @@ async function main() {
   console.log(`3. Commit version bump: git commit -am "Release v<version>"`);
   console.log(`4. Create tag: git tag v<version>`);
   console.log(`5. Push changes: git push origin main --tags`);
-  console.log(`6. Publish to npm: npm publish [--tag beta]`);
+  console.log(`6. Publish to npm: pnpm publish [--tag beta]`);
   console.log(`7. Create GitHub release\n`);
 }
 
