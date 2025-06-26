@@ -31,8 +31,6 @@ PeepIt is a macOS-only MCP server that lets AI agents capture screenshots of you
 - **📦 Easy Installation**: One-click install via Cursor, or just a quick npm/npx incantation—no arcane rituals required.
 - **🛠️ Developer-Friendly**: Clean JSON API, TypeScript support, and logs so comprehensive you'll wonder if PeepIt is secretly writing your memoirs.
 
-Read more about the design philosophy and implementation details in the [blog post](https://mantisware.com/posts/peepit-mcp-screenshots-so-fast-theyre-paranormal/).
-
 ---
 
 ## Installation
